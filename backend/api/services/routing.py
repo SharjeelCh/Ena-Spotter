@@ -3,6 +3,7 @@ import time
 from urllib.parse import quote
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search?q={q}&format=json&limit=1&countrycodes=us"
+NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search"
 OSRM_URL = "https://router.project-osrm.org/route/v1/driving/{coords}?overview=full&geometries=geojson&steps=false&alternatives=false"
 
 HEADERS = {"User-Agent": "EnaSpotter/1.0"}
@@ -43,6 +44,32 @@ def _osrm_route(a, b):
                 time.sleep(1)
                 continue
             raise ValueError(f"Routing timed out. Try again or use simpler location names.")
+
+def search_locations(query):
+    params = {
+        "q": query,
+        "format": "jsonv2",
+        "limit": 5,
+        "addressdetails": 1,
+        "countrycodes": "us",
+    }
+    resp = requests.get(NOMINATIM_SEARCH_URL, params=params, headers=HEADERS, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+
+    suggestions = []
+    for item in data:
+        display_name = item.get("display_name", "").strip()
+        if not display_name:
+            continue
+        suggestions.append({
+            "display_name": display_name,
+            "lat": float(item.get("lat", 0)) if item.get("lat") is not None else None,
+            "lon": float(item.get("lon", 0)) if item.get("lon") is not None else None,
+            "type": item.get("type", "place"),
+        })
+    return suggestions
+
 
 def get_route(waypoints):
     total_dist = 0

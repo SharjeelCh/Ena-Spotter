@@ -3,7 +3,7 @@ import time
 import math
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from .services import routing
 from .services import eld
 
@@ -20,6 +20,21 @@ def _interpolate_point(route_coords, total_miles, mile_marker):
     lng1, lat1 = route_coords[i]
     lng2, lat2 = route_coords[i + 1]
     return {"lat": round(lat1 + t * (lat2 - lat1), 6), "lng": round(lng1 + t * (lng2 - lng1), 6)}
+
+@csrf_exempt
+@require_GET
+def suggest_locations(request):
+    query = request.GET.get("q", "").strip()
+    if len(query) < 2:
+        return JsonResponse({"suggestions": []})
+
+    try:
+        suggestions = routing.search_locations(query)
+    except Exception:
+        return JsonResponse({"suggestions": []})
+
+    return JsonResponse({"suggestions": suggestions})
+
 
 @csrf_exempt
 @require_POST

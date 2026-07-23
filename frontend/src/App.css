@@ -157,6 +157,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xxs);
+  position: relative;
 }
 
 .trip-form-label {
@@ -194,6 +195,51 @@
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(252, 213, 53, 0.1);
   background: var(--color-surface-elevated-dark);
+}
+
+.trip-form-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--color-surface-card-dark);
+  border: 1px solid var(--color-hairline-dark);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+}
+
+.trip-form-suggestion {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.trip-form-suggestion:hover {
+  background: rgba(252, 213, 53, 0.1);
+}
+
+.trip-form-suggestion-main {
+  display: block;
+  line-height: 1.45;
+}
+
+.trip-form-suggestion-empty {
+  padding: 8px 6px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 /* Buttons */
