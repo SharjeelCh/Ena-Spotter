@@ -57,7 +57,18 @@ def plan_trip(request):
     route_coords = route_data["geometry"]["coordinates"]
     route_geojson = [[lng, lat] for lng, lat in route_coords]
 
-    trip_plan = eld.plan_trip(total_miles, cycle_used)
+    legs = route_data.get("legs", [])
+    pickup_distance = legs[0]["distance_miles"] if len(legs) >= 1 else 0
+    dropoff_distance = legs[1]["distance_miles"] if len(legs) >= 2 else 0
+    route_instructions = [
+        {"title": "Start", "description": f"Start from current location: {current}."},
+        {"title": "Drive to pickup", "description": f"Drive {pickup_distance:.1f} miles to pickup location."},
+        {"title": "Pickup", "description": "Pickup stop at the pickup location (1 hour)."},
+        {"title": "Drive to dropoff", "description": f"Drive {dropoff_distance:.1f} miles to dropoff location."},
+        {"title": "Drop-off", "description": "Drop-off at destination (1 hour)."},
+    ]
+
+    trip_plan = eld.plan_trip(total_miles, cycle_used, pickup_distance)
     daily_logs = eld.generate_daily_logs(trip_plan)
 
     stops = []
@@ -81,6 +92,8 @@ def plan_trip(request):
             "total_drive_hours": round(route_data["duration_hours"], 2),
             "total_days": len(trip_plan),
             "coordinates": route_geojson,
+            "instructions": route_instructions,
+            "legs": route_data.get("legs", []),
         },
         "waypoints": {
             "current": {"lat": cur_coords[0], "lng": cur_coords[1], "address": current},

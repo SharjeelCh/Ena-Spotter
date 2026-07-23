@@ -49,6 +49,7 @@ def get_route(waypoints):
     total_dur = 0
     merged_coords = []
 
+    legs_data = []
     for i in range(len(waypoints) - 1):
         leg = _osrm_route(waypoints[i], waypoints[i + 1])
         total_dist += leg["distance"]
@@ -59,9 +60,14 @@ def get_route(waypoints):
         else:
             merged_coords.extend(coords)
 
+        legs_data.append({
+            "distance_miles": round(leg["distance"] * 0.000621371, 1),
+            "duration_hours": round(leg["duration"] / 3600, 2),
+        })
+
     return {
         "distance_miles": round(total_dist * 0.000621371, 1),
         "duration_hours": round(total_dur / 3600, 2),
         "geometry": {"type": "LineString", "coordinates": merged_coords},
-        "legs": [],
+        "legs": legs_data,
     }

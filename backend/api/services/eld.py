@@ -16,7 +16,7 @@ STATUS_SB = "SB"
 STATUS_D = "D"
 STATUS_ON = "ON"
 
-def plan_trip(total_distance_miles, cycle_used_hours):
+def plan_trip(total_distance_miles, cycle_used_hours, pickup_distance_miles=0):
     total_drive_hours = total_distance_miles / AVG_SPEED_MPH
     remaining_cycle_hours = 70 - cycle_used_hours
     max_drive_for_trip = min(total_drive_hours, remaining_cycle_hours)
@@ -26,7 +26,7 @@ def plan_trip(total_distance_miles, cycle_used_hours):
     trip_miles_so_far = 0
 
     while remaining_drive > 0.01:
-        day_plan = _plan_day(remaining_drive, trip_miles_so_far, total_distance_miles)
+        day_plan = _plan_day(remaining_drive, trip_miles_so_far, total_distance_miles, pickup_distance_miles)
         days.append({
             "day": day_index + 1,
             "segments": day_plan["segments"],
@@ -50,7 +50,7 @@ def _needs_fuel(miles_covered_before, miles_after, total_miles):
             return checkpoint
     return False
 
-def _plan_day(remaining_drive, trip_miles_so_far, total_miles):
+def _plan_day(remaining_drive, trip_miles_so_far, total_miles, pickup_distance):
     segments = []
     drive_today = 0
     on_duty_today = 0
@@ -58,6 +58,7 @@ def _plan_day(remaining_drive, trip_miles_so_far, total_miles):
     current_hour = 0.0
     drive_streak = 0.0
     day_mile_marker = trip_miles_so_far
+    pickup_done = trip_miles_so_far >= pickup_distance - 0.01
 
     if on_duty_today + 0.5 <= MAX_ON_DUTY_HOURS:
         segments.append({"type": STATUS_ON, "start_hour": round(current_hour, 2), "end_hour": round(current_hour + 0.5, 2), "hours": 0.5, "mile_marker": day_mile_marker})
@@ -65,6 +66,25 @@ def _plan_day(remaining_drive, trip_miles_so_far, total_miles):
         on_duty_today += 0.5
 
     while drive_today < remaining_drive - 0.01 and on_duty_today < MAX_ON_DUTY_HOURS - 0.01:
+        start_miles = trip_miles_so_far + distance_today
+
+        if not pickup_done and start_miles >= pickup_distance - 0.01:
+            if on_duty_today + PICKUP_DURATION <= MAX_ON_DUTY_HOURS:
+                segments.append({
+                    "type": STATUS_ON,
+                    "start_hour": round(current_hour, 2),
+                    "end_hour": round(current_hour + PICKUP_DURATION, 2),
+                    "hours": PICKUP_DURATION,
+                    "remark": "Pickup",
+                    "mile_marker": round(start_miles, 1),
+                })
+                current_hour += PICKUP_DURATION
+                on_duty_today += PICKUP_DURATION
+                drive_streak = 0
+                pickup_done = True
+                continue
+            break
+
         max_seg = min(
             remaining_drive - drive_today,
             MAX_DRIVE_HOURS - drive_today,
@@ -77,14 +97,52 @@ def _plan_day(remaining_drive, trip_miles_so_far, total_miles):
             break
 
         drive_miles = max_seg * AVG_SPEED_MPH
-        miles_after = trip_miles_so_far + distance_today + drive_miles
-        fuel_checkpoint = _needs_fuel(trip_miles_so_far + distance_today, miles_after, total_miles)
+        end_miles = start_miles + drive_miles
+        fuel_checkpoint = _needs_fuel(start_miles, end_miles, total_miles)
+        pickup_checkpoint = None
+        if not pickup_done and start_miles + 0.01 < pickup_distance <= end_miles + 0.01:
+            pickup_checkpoint = pickup_distance
+
+        if pickup_checkpoint and (not fuel_checkpoint or pickup_checkpoint <= fuel_checkpoint):
+            miles_to_pickup = pickup_checkpoint - start_miles
+            drive_hours_to_pickup = miles_to_pickup / AVG_SPEED_MPH
+            if drive_hours_to_pickup > 0.01:
+                seg_miles = start_miles
+                segments.append({
+                    "type": STATUS_D,
+                    "start_hour": round(current_hour, 2),
+                    "end_hour": round(current_hour + drive_hours_to_pickup, 2),
+                    "hours": round(drive_hours_to_pickup, 2),
+                    "mile_marker": round(seg_miles, 1),
+                })
+                current_hour += drive_hours_to_pickup
+                drive_today += drive_hours_to_pickup
+                distance_today += miles_to_pickup
+                on_duty_today += drive_hours_to_pickup
+                drive_streak += drive_hours_to_pickup
+
+            if on_duty_today + PICKUP_DURATION <= MAX_ON_DUTY_HOURS:
+                seg_miles = trip_miles_so_far + distance_today
+                segments.append({
+                    "type": STATUS_ON,
+                    "start_hour": round(current_hour, 2),
+                    "end_hour": round(current_hour + PICKUP_DURATION, 2),
+                    "hours": PICKUP_DURATION,
+                    "remark": "Pickup",
+                    "mile_marker": round(seg_miles, 1),
+                })
+                current_hour += PICKUP_DURATION
+                on_duty_today += PICKUP_DURATION
+                drive_streak = 0
+                pickup_done = True
+                continue
+            break
 
         if fuel_checkpoint:
-            miles_to_fuel = fuel_checkpoint - (trip_miles_so_far + distance_today)
+            miles_to_fuel = fuel_checkpoint - start_miles
             drive_hours_to_fuel = miles_to_fuel / AVG_SPEED_MPH
             if drive_hours_to_fuel > 0.01:
-                seg_miles = trip_miles_so_far + distance_today
+                seg_miles = start_miles
                 segments.append({"type": STATUS_D, "start_hour": round(current_hour, 2), "end_hour": round(current_hour + drive_hours_to_fuel, 2), "hours": round(drive_hours_to_fuel, 2), "mile_marker": round(seg_miles, 1)})
                 current_hour += drive_hours_to_fuel
                 drive_today += drive_hours_to_fuel
@@ -98,12 +156,11 @@ def _plan_day(remaining_drive, trip_miles_so_far, total_miles):
                 current_hour += FUEL_DURATION
                 on_duty_today += FUEL_DURATION
                 continue
-            else:
-                break
+            break
 
         drive_hours = max_seg
         drive_miles = drive_hours * AVG_SPEED_MPH
-        seg_miles = trip_miles_so_far + distance_today
+        seg_miles = start_miles
         segments.append({"type": STATUS_D, "start_hour": round(current_hour, 2), "end_hour": round(current_hour + drive_hours, 2), "hours": round(drive_hours, 2), "mile_marker": round(seg_miles, 1)})
         current_hour += drive_hours
         drive_today += drive_hours

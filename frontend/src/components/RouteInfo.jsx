@@ -53,6 +53,29 @@ function RouteInfo({ routeData, waypoints, stops }) {
         </div>
       )}
 
+      {routeData.instructions?.length > 0 && (
+        <div className="route-instructions">
+          <div className="route-instructions-header">
+            <span className="route-instructions-icon" aria-hidden="true">🗺️</span>
+            <div>
+              <h4 className="route-instructions-title">Route Instructions</h4>
+              <p className="route-instructions-subtitle">Visual step cards for pickup, driving, fueling and dropoff.</p>
+            </div>
+          </div>
+          <div className="route-steps">
+            {routeData.instructions.map((item, index) => (
+              <div key={index} className="route-step-item">
+                <span className="route-step-badge">{index + 1}</span>
+                <div className="route-step-content">
+                  <span className="route-step-label">{item.title}</span>
+                  <p className="route-step-desc">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {stops && stops.length > 0 && (
         <div className="route-stops">
           <h4 className="route-stops-title">Stops &amp; Rests</h4>
