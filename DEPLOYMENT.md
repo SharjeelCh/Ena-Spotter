@@ -1,53 +1,83 @@
 # Deployment Guide: Ena-Spotter
 
 ## Architecture
-- **Backend**: Django 6.0 on Railway (Python)
+- **Backend**: Django 6.0 on PythonAnywhere (free tier)
 - **Frontend**: React 19 + Vite on Vercel (Node.js)
-- **Database**: SQLite (persisted on Railway)
+- **Database**: SQLite
 
-## Backend Deployment (Render)
+## Backend Hosting on PythonAnywhere
 
-### 1. Create Render Account
-- Go to [render.com](https://render.com)
-- Sign up with GitHub
-- Click "New" → "Web Service"
+PythonAnywhere is a practical free option for Django apps that are not too heavy. It supports a free tier and is much simpler than trying to force a container platform to work without billing.
 
-### 2. Connect Repository
-- Select your GitHub repo: `SharjeelCh/Ena-Spotter`
-- Set the root directory to `backend`
-- Set the build command to:
+### 1. Create a PythonAnywhere account
+- Go to [pythonanywhere.com](https://www.pythonanywhere.com/)
+- Sign up for a free account
+- Open the Web tab after login
 
+### 2. Get the backend project onto PythonAnywhere
+In PythonAnywhere, create a new web app and choose:
+- Python 3.11
+- Manual configuration
+
+Then open the Bash console and clone your repository directly:
+
+```bash
+git clone https://github.com/SharjeelCh/Ena-Spotter.git
 ```
+
+If you already have the repo, change into the backend folder:
+
+```bash
+cd Ena-Spotter/backend
+```
+
+### 3. Configure the web app
+Set the WSGI file to your Django project and point it to:
+
+```python
+import os
+import sys
+
+path = '/home/your-username/Ena-Spotter/backend'
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings'
+
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
+```
+
+### 4. Install dependencies
+In the PythonAnywhere Bash console, run:
+
+```bash
+cd /home/your-username/Ena-Spotter/backend
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-- Set the start command to:
+If you still see a warning about `dj-rest-auth`, ignore it unless your app imports that package. Your project does not need it.
 
-```
-gunicorn config.wsgi
-```
+### 5. Set environment variables
+In the PythonAnywhere Web tab, add:
 
-- Choose the **Free** plan
-
-### 3. Configure Environment Variables
-In Render dashboard, add the following variables:
-
-```
+```env
 DEBUG=False
-SECRET_KEY=<generate-a-secure-random-string>
-ALLOWED_HOSTS=localhost,127.0.0.1,your-app.onrender.com
-CORS_ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.vercel.app
+SECRET_KEY=replace-with-a-secret
+ALLOWED_HOSTS=localhost,127.0.0.1,your-username.pythonanywhere.com
+CORS_ALLOWED_ORIGINS=http://localhost:5173,https://ena-spotter-git-main-sharjeel-fida-chs-projects.vercel.app
 ```
 
-**Generate SECRET_KEY** (run once locally):
-```bash
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-```
+### 6. Reload the web app
+After saving the config, click **Reload** in PythonAnywhere.
 
-### 4. After Deployment
-- Render provides a domain like `https://your-app.onrender.com`
-- Update `CORS_ALLOWED_ORIGINS` with your actual Vercel domain
-- Your backend API is now live at `https://your-app.onrender.com/api/plan-trip/`
+Your API will be available at:
+
+```text
+https://your-username.pythonanywhere.com/api/plan-trip/
+```
 
 ---
 
@@ -56,13 +86,13 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ### 1. Environment Configuration
 Create `frontend/.env.production`:
 ```
-VITE_API_BASE_URL=https://ena-spotter-backend.up.railway.app
+VITE_API_URL=https://your-username.pythonanywhere.com/api
 ```
 
-Update `frontend/src/App.jsx` to use:
+The frontend already uses this env var name in `frontend/src/App.jsx`:
 ```javascript
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-// Then use: `${apiBaseUrl}/api/plan-trip/`
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+// Then use: `${API_URL}/plan-trip/`
 ```
 
 ### 2. Deploy to Vercel
@@ -91,8 +121,8 @@ Or connect via GitHub:
 
 | File | Purpose |
 |------|---------|
-| `backend/Procfile` | Tells Railway how to run Django |
-| `backend/railway.json` | Railway-specific config |
+| `backend/Dockerfile` | Docker config for Fly.io deployment |
+| `backend/fly.toml` | Fly.io app configuration |
 | `backend/requirements.txt` | Python dependencies (auto-generated) |
 | `backend/.env.example` | Template for environment variables |
 | `backend/config/settings.py` | Updated for production (reads env vars) |
@@ -121,38 +151,37 @@ Visit `http://localhost:5173` and verify trip planning works.
 
 ## Troubleshooting
 
-### Backend deployment fails
-- Check Railway **Deployments** tab for build logs
-- Ensure all vars in `config/settings.py` use `os.getenv()`
-- Verify `requirements.txt` includes `gunicorn`
+### Backend is not reachable
+- Confirm the PythonAnywhere web app is reloaded
+- Verify the domain is correct: `https://your-username.pythonanywhere.com/api/plan-trip/`
+- Check the web app error logs in PythonAnywhere
 
 ### CORS errors in browser
 - Frontend URL must be in backend's `CORS_ALLOWED_ORIGINS`
-- Check Railway **Variables** and update with correct Vercel domain
+- Use `https://ena-spotter-git-main-sharjeel-fida-chs-projects.vercel.app`
 
 ### API returns 404
-- Confirm backend URL is correct: `https://your-railway-domain.up.railway.app/api/plan-trip/`
+- Confirm the URL ends with `/api/plan-trip/`
 - Check Django `config/urls.py` routes `/api/` correctly
 
-### SQLite locks on Railway
+### SQLite issues
 - SQLite should work fine for this use case
-- If issues arise, migrate to PostgreSQL (Railway offers free tier)
+- If issues arise, migrate to PostgreSQL later
 
 ---
 
 ## Next Steps
 
-1. **Deploy backend first** (Railway)
-2. **Note the domain** (e.g., `ena-spotter-backend.up.railway.app`)
-3. **Update frontend** `.env.production` with that domain
-4. **Deploy frontend** (Vercel)
-5. **Update backend** `CORS_ALLOWED_ORIGINS` with Vercel domain
+1. **Create the PythonAnywhere web app**
+2. **Upload the backend project**
+3. **Set the Django environment variables**
+4. **Update frontend** `.env.production` with the PythonAnywhere URL
+5. **Deploy frontend** (Vercel)
 6. **Test end-to-end**
 
 ---
 
 ## CI/CD
 
-Both Railway and Vercel auto-deploy on `git push main`:
-- Merges to `main` trigger automatic rebuilds
-- No manual deployment needed after setup
+Vercel auto-deploys the frontend on `git push main`.
+The Django backend is hosted on PythonAnywhere.
