@@ -29,7 +29,18 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-7)*l4ll3-drie9riq!mg7z@#x)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+allowed_hosts_env = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+
+# Allow the PythonAnywhere hostname and the Vercel frontend domain even if env is missing.
+if 'sharjeel.pythonanywhere.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('sharjeel.pythonanywhere.com')
+
+if 'ena-spotter-git-main-sharjeel-fida-chs-projects.vercel.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('ena-spotter-git-main-sharjeel-fida-chs-projects.vercel.app')
+
+if 'ena-spotter-git-main-sharjeel-fida-chs-projects.vercel.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('ena-spotter-git-main-sharjeel-fida-chs-projects.vercel.app')
 
 
 # Application definition

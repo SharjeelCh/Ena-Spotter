@@ -7,7 +7,7 @@ import EldLogs from "./components/EldLogs";
 import Footer from "./components/Footer";
 import "./App.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://sharjeel.pythonanywhere.com/api/plan-trip";
+const API_URL = import.meta.env.VITE_API_URL || "https://sharjeel.pythonanywhere.com/api";
 
 function App() {
   const [loading, setLoading] = useState(false);
